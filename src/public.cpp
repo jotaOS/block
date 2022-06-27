@@ -19,7 +19,7 @@ size_t connect(std::PID client, std::SMID smid) {
 	return true;
 }
 
-static const size_t UUIDS_PER_PAGE = 4096 / sizeof(std::UUID);
+static const size_t UUIDS_PER_PAGE = PAGE_SIZE / sizeof(std::UUID);
 size_t listDevices(std::PID client, size_t page) {
 	if(shared.find(client) == shared.end())
 		return 0;
