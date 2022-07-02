@@ -2,29 +2,19 @@
 #include <vector>
 #include <unordered_map>
 #include <shared_memory>
-
-static std::unordered_map<std::PID, void*> shared;
+#include <mutex>
 
 size_t connect(std::PID client, std::SMID smid) {
-	// Already connected?
-	if(!std::smRequest(client, smid))
-		return false;
-
-	void* ptr = std::smMap(smid);
-	if(!ptr)
-		return false;
-
-	// TODO: unmap previous, release SMID
-	shared[client] = ptr;
-	return true;
+	return std::sm::connect(client, smid);
 }
+
+static std::mutex uuidsLock;
 
 static const size_t UUIDS_PER_PAGE = PAGE_SIZE / sizeof(std::UUID);
 size_t listDevices(std::PID client, size_t page) {
-	if(shared.find(client) == shared.end())
+	uint64_t* data = (uint64_t*)std::sm::get(client);
+	if(!data)
 		return 0;
-
-	uint64_t* data = (uint64_t*)(shared[client]);
 
 	// Which UUID is first in this page
 	size_t first = page * UUIDS_PER_PAGE;
@@ -33,10 +23,12 @@ size_t listDevices(std::PID client, size_t page) {
 
 	// Run through them
 	size_t idx = first;
+	uuidsLock.acquire();
 	for(; idx < last && idx < uuids.size(); ++idx) {
 		*(data++) = uuids[idx].a;
 		*(data++) = uuids[idx].b;
 	}
+	uuidsLock.release();
 
 	if(idx < last) {
 		// Fill the rest with zeros
@@ -47,16 +39,23 @@ size_t listDevices(std::PID client, size_t page) {
 	return idx - first; // How many
 }
 
-bool read(std::PID client, size_t uuida, size_t uuidb, size_t start, size_t sz) {
-	if(shared.find(client) == shared.end())
-		return false;
+static std::mutex devicesLock;
 
-	uint8_t* data = (uint8_t*)(shared[client]);
+bool read(std::PID client, size_t uuida, size_t uuidb, size_t start, size_t sz) {
+	uint8_t* data = std::sm::get(client);
+	if(!data)
+		return false;
 
 	// Get UUID type, if exists
-	if(devices.find(uuida) == devices.end())
+	devicesLock.acquire();
+	if(devices.find(uuida) == devices.end()) {
+		devicesLock.release();
 		return false;
+	}
+
 	auto& map = devices[uuida];
+	devicesLock.release();
+
 	if(map.find(uuidb) == map.end())
 		return false;
 	size_t type = map[uuidb];
