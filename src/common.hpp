@@ -2,18 +2,13 @@
 #define COMMON_HPP
 
 #include <UUID.hpp>
+#include <userspace/block.hpp>
 
-extern UUIDmap devices;
+extern UUIDmap deviceTypes;
 extern std::vector<std::UUID> uuids;
 
-struct DeviceTypes {
-	enum {
-		NONE,
-		AHCIATAPI,
-	};
-};
-
 bool genericRead(const std::UUID& uuid, size_t type, uint8_t* data, size_t start, size_t sz);
+bool genericWrite(const std::UUID& uuid, size_t type, uint8_t* data, size_t start, size_t sz);
 void exportProcedures();
 
 #endif

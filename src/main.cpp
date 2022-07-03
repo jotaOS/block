@@ -1,24 +1,25 @@
 #include <cstdio>
 #include <devices/AHCI/AHCI.hpp>
+#include <devices/ramblock/ramblock.hpp>
 #include <common.hpp>
 
-UUIDmap devices;
+UUIDmap deviceTypes;
 std::vector<std::UUID> uuids;
-
-bool genericRead(const std::UUID& uuid, size_t type, uint8_t* data, size_t start, size_t sz) {
-	switch(type) {
-	case DeviceTypes::AHCIATAPI:
-		return AHCI::readATAPI(uuid, data, start, sz);
-	default:
-		return false;
-	}
-}
 
 extern "C" void _start() {
 	for(auto const& x : AHCI::probeATAPI()) {
-		devices[x.a][x.b] = DeviceTypes::AHCIATAPI;
+		deviceTypes[x.a][x.b] = std::block::DeviceTypes::AHCIATAPI;
 		uuids.push_back(x);
 	}
+
+	std::PID ram = std::resolve("ramblock");
+	if(!ram) {
+		std::printf("[block] Error: could not resolve ramblock\n");
+		std::exit(99);
+	}
+	auto ramuuid = ramblock::add(ram);
+	deviceTypes[ramuuid.a][ramuuid.b] = std::block::DeviceTypes::RAMBLOCK;
+	uuids.push_back(ramuuid);
 
 	exportProcedures();
 	std::enableRPC();
