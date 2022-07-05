@@ -3,6 +3,7 @@
 
 #include <UUID.hpp>
 #include <userspace/block.hpp>
+#include <vector>
 
 extern UUIDmap deviceTypes;
 extern std::vector<std::UUID> uuids;

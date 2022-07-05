@@ -47,7 +47,7 @@ static std::mutex devicesLock;
 static size_t getUUIDType(size_t uuida, size_t uuidb) {
 	// Get UUID type, if exists
 	devicesLock.acquire();
-	if(deviceTypes.find(uuida) == deviceTypes.end()) {
+	if(!deviceTypes.has(uuida)) {
 		devicesLock.release();
 		return TYPE_ERROR;
 	}
@@ -55,7 +55,7 @@ static size_t getUUIDType(size_t uuida, size_t uuidb) {
 	auto& map = deviceTypes[uuida];
 	devicesLock.release();
 
-	if(map.find(uuidb) == map.end())
+	if(!map.has(uuidb))
 		return TYPE_ERROR;
 	return map[uuidb];
 }
