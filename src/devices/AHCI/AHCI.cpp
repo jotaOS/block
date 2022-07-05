@@ -15,6 +15,8 @@ bool AHCI::resolve() {
 bool AHCI::connect() {
 	if(!resolve())
 		return false;
+	if(buffer)
+		return true;
 
 	std::SMID smid = std::smMake();
 	buffer = (char*)std::smMap(smid);
