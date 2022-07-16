@@ -13,7 +13,7 @@ public:
 	AHCIATAPI() = default;
 	AHCIATAPI(size_t id) : id(id) {}
 
-	bool read(uint8_t* data, size_t start, size_t sz);
+	bool read(std::SMID smid, size_t start, size_t sz);
 };
 
 #endif

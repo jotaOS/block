@@ -9,20 +9,18 @@
 class RAMBlock {
 private:
 	std::PID pid = 0;
-	uint8_t* buffer = nullptr;
-	bool ok = false;
 	std::mutex lock;
 
 public:
-	RAMBlock(std::PID);
-	bool read(uint8_t* data, size_t lba);
-	bool write(uint8_t* data, size_t lba);
+	RAMBlock(std::PID pid) : pid(pid) {}
+	bool read(std::SMID smid, size_t lba);
+	bool write(std::SMID smid, size_t lba);
 };
 
 namespace ramblock {
 	std::UUID add(std::PID pid);
-	bool read(const std::UUID&, uint8_t* data, size_t start, size_t sz);
-	bool write(const std::UUID&, uint8_t* data, size_t start, size_t sz);
+	bool read(const std::UUID&, std::SMID smid, size_t start);
+	bool write(const std::UUID&, std::SMID smid, size_t start);
 }
 
 #endif

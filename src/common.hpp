@@ -8,8 +8,8 @@
 extern UUIDmap deviceTypes;
 extern std::vector<std::UUID> uuids;
 
-bool genericRead(const std::UUID& uuid, size_t type, uint8_t* data, size_t start, size_t sz);
-bool genericWrite(const std::UUID& uuid, size_t type, uint8_t* data, size_t start, size_t sz);
+bool genericRead(const std::UUID& uuid, size_t type, std::SMID smid, size_t start, size_t sz);
+bool genericWrite(const std::UUID& uuid, size_t type, std::SMID smid, size_t start, size_t sz);
 void exportProcedures();
 
 #endif

@@ -19,7 +19,7 @@ std::vector<std::UUID> AHCI::probeATAPI() {
 	return ret;
 }
 
-bool AHCI::readATAPI(const std::UUID& uuid, uint8_t* data, size_t start, size_t sz) {
+bool AHCI::readATAPI(const std::UUID& uuid, std::SMID smid, size_t start, size_t sz) {
 	AHCIATAPI* dev = (AHCIATAPI*)(atapis[uuid.a][uuid.b]);
-	return dev->read(data, start, sz);
+	return dev->read(smid, start, sz);
 }

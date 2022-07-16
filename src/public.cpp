@@ -4,17 +4,15 @@
 #include <shared_memory>
 #include <mutex>
 
-size_t connect(std::PID client, std::SMID smid) {
-	return std::sm::connect(client, smid);
-}
-
 static std::mutex uuidsLock;
 
 static const size_t UUIDS_PER_PAGE = PAGE_SIZE / (sizeof(std::UUID) + sizeof(size_t));
-size_t listDevices(std::PID client, size_t page) {
-	uint64_t* data = (uint64_t*)std::sm::get(client);
-	if(!data)
+size_t listDevices(std::PID client, std::SMID smid, size_t page) {
+	auto link = std::sm::link(client, smid);
+	size_t npages = link.s;
+	if(!npages)
 		return 0;
+	uint64_t* data = (uint64_t*)link.f;
 
 	// Which UUID is first in this page
 	size_t first = page * UUIDS_PER_PAGE;
@@ -32,12 +30,7 @@ size_t listDevices(std::PID client, size_t page) {
 	}
 	uuidsLock.release();
 
-	if(idx < last) {
-		// Fill the rest with zeros
-		size_t remaining = last - idx;
-		memset(data, 0, remaining);
-	}
-
+	std::sm::unlink(smid);
 	return idx - first; // How many
 }
 
@@ -60,37 +53,63 @@ static size_t getUUIDType(size_t uuida, size_t uuidb) {
 	return map[uuidb];
 }
 
-bool read(std::PID client, size_t uuida, size_t uuidb, size_t start, size_t sz) {
-	uint8_t* data = std::sm::get(client);
-	if(!data)
-		return false;
+std::unordered_map<std::PID, std::UUID> selecteds;
+std::mutex selectedsLock;
 
-	size_t type = getUUIDType(uuida, uuidb);
-	if(type == TYPE_ERROR)
-		return false;
+bool select(std::PID client, size_t uuida, size_t uuidb) {
+	selectedsLock.acquire();
 
-	// Perform the read
-	std::UUID uuid(uuida, uuidb);
-	return genericRead(uuid, type, data, start, sz);
+	bool ret = false;
+	if(getUUIDType(uuida, uuidb) != TYPE_ERROR) {
+		selecteds[client] = {uuida, uuidb};
+		ret = true;
+	}
+
+	selectedsLock.release();
+	return ret;
 }
 
-bool write(std::PID client, size_t uuida, size_t uuidb, size_t start, size_t sz) {
-	uint8_t* data = std::sm::get(client);
-	if(!data)
+bool read(std::PID client, std::SMID smid, size_t start, size_t sz) {
+	selectedsLock.acquire();
+	if(!selecteds.has(client)) {
+		selectedsLock.release();
+		return false;
+	}
+	std::UUID selected = selecteds[client];
+	selectedsLock.release();
+
+	auto link = std::sm::link(client, smid);
+	if(!link.s)
 		return false;
 
-	size_t type = getUUIDType(uuida, uuidb);
-	if(type == TYPE_ERROR)
+	size_t type = getUUIDType(selected.a, selected.b);
+	bool ret = genericRead(selected, type, smid, start, sz);
+	std::sm::unlink(smid);
+	return ret;
+}
+
+bool write(std::PID client, std::SMID smid, size_t start, size_t sz) {
+	selectedsLock.acquire();
+	if(!selecteds.has(client)) {
+		selectedsLock.release();
+		return false;
+	}
+	std::UUID selected = selecteds[client];
+	selectedsLock.release();
+
+	auto link = std::sm::link(client, smid);
+	if(!link.s)
 		return false;
 
-	// Perform the write
-	std::UUID uuid(uuida, uuidb);
-	return genericWrite(uuid, type, data, start, sz);
+	size_t type = getUUIDType(selected.a, selected.b);
+	bool ret = genericWrite(selected, type, smid, start, sz);
+	std::sm::unlink(smid);
+	return ret;
 }
 
 void exportProcedures() {
-	std::exportProcedure((void*)connect, 1);
-	std::exportProcedure((void*)listDevices, 1);
-	std::exportProcedure((void*)read, 4);
-	std::exportProcedure((void*)write, 4);
+	std::exportProcedure((void*)listDevices, 2);
+	std::exportProcedure((void*)select, 2);
+	std::exportProcedure((void*)read, 3);
+	std::exportProcedure((void*)write, 3);
 }

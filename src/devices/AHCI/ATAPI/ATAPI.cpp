@@ -3,18 +3,17 @@
 #include <userspace/AHCI.hpp>
 #include <rpc>
 #include <cstdio>
+#include <shared_memory>
 
-bool AHCIATAPI::read(uint8_t* read, size_t start, size_t sz) {
-	AHCI::connect();
-	bool result = std::rpc(AHCI::ahci,
-						   std::AHCI::READ_ATAPI,
-						   id,
-						   start,
-						   (sz + ATAPI_SECTOR_SIZE - 1) / ATAPI_SECTOR_SIZE);
+bool AHCIATAPI::read(std::SMID smid, size_t start, size_t sz) {
+	AHCI::resolve();
 
-	if(!result)
-		return false;
-
-	memcpy(read, AHCI::buffer, sz);
-	return true;
+	std::smAllow(smid, AHCI::ahci);
+	size_t sectors = (sz + ATAPI_SECTOR_SIZE - 1) / ATAPI_SECTOR_SIZE;
+	return std::rpc(AHCI::ahci,
+					std::AHCI::READ_ATAPI,
+					smid,
+					id,
+					start,
+					sectors);
 }

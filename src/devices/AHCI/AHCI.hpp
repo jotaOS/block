@@ -8,13 +8,11 @@
 
 namespace AHCI {
 	extern std::PID ahci;
-	extern char* buffer;
 
 	bool resolve();
-	bool connect();
 
 	std::vector<std::UUID> probeATAPI();
-	bool readATAPI(const std::UUID&, uint8_t* data, size_t start, size_t sz);
+	bool readATAPI(const std::UUID&, std::SMID smid, size_t start, size_t sz);
 }
 
 #endif
