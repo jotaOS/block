@@ -3,11 +3,15 @@
 #include <unordered_map>
 #include <shared_memory>
 #include <mutex>
+#include <registry>
 
 static std::mutex uuidsLock;
 
 static const size_t UUIDS_PER_PAGE = PAGE_SIZE / (sizeof(std::UUID) + sizeof(size_t));
 size_t listDevices(std::PID client, std::SMID smid, size_t page) {
+	if(!std::registry::has(client, "BLOCK_LIST"))
+		return 0;
+
 	auto link = std::sm::link(client, smid);
 	size_t npages = link.s;
 	if(!npages)
@@ -57,6 +61,9 @@ std::unordered_map<std::PID, std::UUID> selecteds;
 std::mutex selectedsLock;
 
 bool select(std::PID client, size_t uuida, size_t uuidb) {
+	if(!std::registry::has(client, "BLOCK_READ"))
+		return false;
+
 	selectedsLock.acquire();
 
 	bool ret = false;
@@ -70,6 +77,9 @@ bool select(std::PID client, size_t uuida, size_t uuidb) {
 }
 
 bool read(std::PID client, std::SMID smid, size_t start, size_t sz) {
+	if(!std::registry::has(client, "BLOCK_READ"))
+		return false;
+
 	selectedsLock.acquire();
 	if(!selecteds.has(client)) {
 		selectedsLock.release();
@@ -89,6 +99,9 @@ bool read(std::PID client, std::SMID smid, size_t start, size_t sz) {
 }
 
 bool write(std::PID client, std::SMID smid, size_t start, size_t sz) {
+	if(!std::registry::has(client, "BLOCK_WRITE"))
+		return false;
+
 	selectedsLock.acquire();
 	if(!selecteds.has(client)) {
 		selectedsLock.release();
